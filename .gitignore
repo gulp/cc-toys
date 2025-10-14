@@ -1,0 +1,45 @@
+# Local development and testing
+.claude/state/
+*.jsonl
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.sublime-*
+
+# Temporary files
+*.tmp
+*.temp
+.*.tmp
+tmp/
+temp/
+
+# Logs
+*.log
+logs/
+
+# Dependencies (if any Node/Python tools are added)
+node_modules/
+__pycache__/
+*.pyc
+.python-version
+
+# Test artifacts
+test-output/
+*.test
+
+# Environment files
+.env
+.env.local
