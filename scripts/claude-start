@@ -235,8 +235,10 @@ echo ""
 # Read selection
 max_session_num=${#session_times[@]}
 while true; do
-  if [ $max_session_num -gt 0 ]; then
+  if [ $max_session_num -gt 1 ]; then
     echo -e -n "Your pick [1-${max_session_num}]: ${DIM}Hit Return to select latest${RESET}\n> "
+  elif [ $max_session_num -eq 1 ]; then
+    echo -e -n "Your pick: ${DIM}Hit Return to select latest${RESET}\n> "
   else
     echo -n "> "
   fi
