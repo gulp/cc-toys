@@ -1,0 +1,35 @@
+{
+  "mcpServers": {
+    "git": {
+      "command": "uvx",
+      "args": ["mcp-server-git"]
+    },
+    "serena": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/oraios/serena",
+        "serena",
+        "start-mcp-server",
+        "--context",
+        "claude",
+        "--project",
+        "/home/gulp/projects/claude-viz/"
+      ],
+      "env": {}
+    },
+    "exa": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.exa.ai/mcp?exaApiKey=YOUR_EXA_API_KEY"
+      ]
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upwk/context7"]
+    }
+  }
+}

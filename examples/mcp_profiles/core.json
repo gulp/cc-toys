@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "git": {
+      "command": "uvx",
+      "args": ["mcp-server-git"]
+    },
+    "serena": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/oraios/serena",
+        "serena",
+        "start-mcp-server",
+        "--context",
+        "claude",
+        "--project",
+        "/home/gulp/projects/claude-viz/"
+      ],
+      "env": {}
+    }
+  }
+}

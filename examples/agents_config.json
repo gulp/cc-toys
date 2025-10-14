@@ -1,0 +1,20 @@
+{
+  "default": [
+    "code-review",
+    "context-gathering",
+    "context-refinement",
+    "logging"
+  ],
+  "profiles": {
+    "frontend": [
+      "frontend-developer",
+      "test-automator"
+    ],
+    "backend": [
+      "typescript-pro",
+      "debugger"
+    ],
+    "full": ["*"],
+    "minimal": []
+  }
+}

@@ -1,0 +1,425 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Colors
+BOLD='\033[1m'
+DIM='\033[2m'
+RESET='\033[0m'
+CYAN='\033[36m'
+GREEN='\033[32m'
+
+# Check for --all or -a flag
+if [ "${1:-}" = "--all" ] || [ "${1:-}" = "-a" ]; then
+  # Extract projects from ~/.claude.json
+  echo -e "${BOLD}${CYAN}Select Project${RESET}\n"
+
+  # Extract projects array and handle it properly
+  if ! jq -e '.projects' ~/.claude.json &>/dev/null; then
+    echo "No projects found in ~/.claude.json"
+    exit 1
+  fi
+
+  # Extract only completed projects (filter by hasCompletedProjectOnboarding)
+  mapfile -t project_paths < <(jq -r '.projects | to_entries[] | select(.value.hasCompletedProjectOnboarding == true) | .key' ~/.claude.json 2>/dev/null | sed "s|$HOME|~|")
+
+  # Check if fzf is available
+  if command -v fzf &> /dev/null; then
+    selected=$(printf '%s\n' "${project_paths[@]}" | fzf --height=40% --prompt="Project: ")
+  else
+    # Fallback to select
+    PS3="Project: "
+    select selected in "${project_paths[@]}"; do
+      if [ -n "$selected" ]; then
+        break
+      fi
+    done
+  fi
+
+  # Expand ~ back to $HOME
+  selected="${selected/#\~/$HOME}"
+
+  # Check if selected path exists
+  if [ ! -d "$selected" ]; then
+    echo -e "${DIM}Path does not exist: $selected${RESET}"
+    echo ""
+    echo -n "Remove this path from ~/.claude.json? [y/N] "
+    read -n 1 -r cleanup_response
+    echo ""
+    echo ""
+
+    if [[ "$cleanup_response" =~ ^[Yy]$ ]]; then
+      # Create temp file and filter out this path
+      temp_file=$(mktemp)
+      jq --arg path "$selected" \
+        '.projects |= with_entries(select(.key != $path))' \
+        ~/.claude.json > "$temp_file"
+
+      # Replace original file
+      mv "$temp_file" ~/.claude.json
+      echo -e "${GREEN}✓${RESET} Removed orphaned path"
+      echo ""
+    fi
+    exit 1
+  fi
+
+  echo -e "${GREEN}✓${RESET} Selected: $selected"
+  echo ""
+
+  # cd to project and re-run this script without --all flag
+  cd "$selected" || exit 1
+
+  # Use the selected project's claude-start if it exists, otherwise use PWD
+  if [ -x ".claude/scripts/claude-start" ]; then
+    exec "./.claude/scripts/claude-start"
+  else
+    # Mark that we're in re-exec mode
+    export CLAUDE_START_REEXEC=1
+    exec "$0"
+  fi
+fi
+
+# Get project root
+# If we're in re-exec mode from --all, use PWD; otherwise use PWD
+if [ "${CLAUDE_START_REEXEC:-0}" = "1" ]; then
+  PROJECT_ROOT="$PWD"
+else
+  PROJECT_ROOT="$PWD"
+
+  # Verify this is a valid onboarded Claude project
+  if [ -f ~/.claude.json ]; then
+    is_onboarded=$(jq -r --arg path "$PROJECT_ROOT" '.projects[$path].hasCompletedProjectOnboarding // false' ~/.claude.json)
+    if [ "$is_onboarded" != "true" ]; then
+      echo "Error: Not in an onboarded Claude project"
+      echo "Use 'cs -a' to select a project"
+      exit 1
+    fi
+  else
+    echo "Error: ~/.claude.json not found"
+    exit 1
+  fi
+fi
+
+# Get project path for session lookup
+PROJECT_PATH_ENCODED=$(echo "$PROJECT_ROOT" | sed 's|/|-|g')
+SESSION_DIR="$HOME/.claude/projects/$PROJECT_PATH_ENCODED"
+
+echo -e "${BOLD}${CYAN}Claude Code Quickstart${RESET}\n"
+
+# Step 1: Select Session (new or resume)
+echo -e "${BOLD}Select Session:${RESET}"
+
+# Get recent sessions
+session_uuids=()
+session_times=()
+session_branches=()
+session_previews=()
+max_time_width=0
+max_branch_width=0
+
+if [ -d "$SESSION_DIR" ]; then
+  # Find 9 most recent session files
+  mapfile -t recent < <(
+    find "$SESSION_DIR" -name "*.jsonl" -type f -printf '%T@ %f\n' 2>/dev/null \
+      | sort -rn \
+      | head -9 \
+      | cut -d' ' -f2 \
+      | sed 's/.jsonl$//'
+  )
+
+  session_count=0
+  for uuid in "${recent[@]}"; do
+    # Get file mod time and git branch
+    file="$SESSION_DIR/${uuid}.jsonl"
+    if [ -f "$file" ]; then
+      timestamp=$(stat -c '%y' "$file" | cut -d'.' -f1) || continue
+      # Extract git branch from first line with gitBranch (allow failure)
+      branch=$(grep -m1 '"gitBranch"' "$file" 2>/dev/null | grep -o '"gitBranch":"[^"]*"' | cut -d'"' -f4 || echo "--")
+      [ -z "$branch" ] && branch="--"
+
+      # Truncate long branches: first 6 + "..." + last 15 = 24 chars
+      if [ ${#branch} -gt 28 ]; then
+        branch="${branch:0:6}...${branch: -15}"
+      fi
+
+      # Track max branch width (add 2 for brackets, except for --)
+      if [ "$branch" = "--" ]; then
+        branch_width=${#branch}
+      else
+        branch_width=$((${#branch} + 2))
+      fi
+      if [ $branch_width -gt $max_branch_width ]; then
+        max_branch_width=$branch_width
+      fi
+
+      # Get last real user message's last line (skip hook messages)
+      preview=$(jq -r 'select(.type == "user" and (.message.content | type == "string") and (.message.content | startswith("<") | not) and (.message.content | test("^\\s*$") | not)) | .message.content' "$file" 2>/dev/null \
+        | tail -1 \
+        | tail -c 80 \
+        | head -c 40 \
+        | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' || echo "")
+
+      # Check if timestamp is today or yesterday
+      file_date=$(echo "$timestamp" | cut -d' ' -f1)
+      today=$(date +%Y-%m-%d)
+      yesterday=$(date -d "yesterday" +%Y-%m-%d 2>/dev/null || date -d "1 day ago" +%Y-%m-%d)
+      time_only=$(echo "$timestamp" | awk '{print $2}' | cut -d':' -f1,2)
+
+      # First session (most recent) gets asterisk
+      if [ $session_count -eq 0 ]; then
+        marker=" *"
+      else
+        marker=""
+      fi
+
+      if [ "$file_date" = "$today" ]; then
+        # Today, HH:MM
+        time_part="Today, $time_only$marker"
+      elif [ "$file_date" = "$yesterday" ]; then
+        # Yesterday, HH:MM
+        time_part="Yesterday, $time_only$marker"
+      else
+        # Oct 14, HH:MM
+        time_part=$(date -d "$timestamp" '+%b %d, %H:%M' 2>/dev/null || echo "$timestamp")
+        time_part="$time_part$marker"
+      fi
+
+      # Track max time width
+      if [ ${#time_part} -gt $max_time_width ]; then
+        max_time_width=${#time_part}
+      fi
+
+      # Format preview part
+      if [ -n "$preview" ]; then
+        preview_part="\"${preview}...\""
+      else
+        preview_part=" no content"
+      fi
+
+      # Store components separately for formatting later
+      session_times+=("$time_part")
+      session_branches+=("$branch")
+      session_previews+=("$preview_part")
+      session_uuids+=("$uuid")
+      session_count=$((session_count + 1))
+    fi
+  done
+fi
+
+# Display sessions with numbers
+for i in "${!session_times[@]}"; do
+  # Format branch (dim -- or bracketed name)
+  if [[ "${session_branches[$i]}" == "--" ]]; then
+    # Pad plain text, then apply styling
+    branch_text=$(printf "%-${max_branch_width}s" "${session_branches[$i]}")
+    formatted_branch="${DIM}${branch_text}${RESET}"
+  else
+    # Pad bracketed text, no styling needed
+    branch_text="[${session_branches[$i]}]"
+    formatted_branch=$(printf "%-${max_branch_width}s" "$branch_text")
+  fi
+
+  # Apply dim styling to "no content" previews
+  if [[ "${session_previews[$i]}" == " no content" ]]; then
+    formatted_preview="${DIM}${session_previews[$i]}${RESET}"
+  else
+    formatted_preview="${session_previews[$i]}"
+  fi
+
+  # Build display line with time padded normally
+  time_part=$(printf "%-${max_time_width}s" "${session_times[$i]}")
+  echo -e "$((i+1))) ${time_part}  ${formatted_branch}  ${formatted_preview}"
+done
+echo "0) New session"
+echo ""
+
+# Read selection
+max_session_num=${#session_times[@]}
+while true; do
+  if [ $max_session_num -gt 0 ]; then
+    echo -e -n "Your pick [1-${max_session_num}]: ${DIM}Hit Return to select latest${RESET}\n> "
+  else
+    echo -n "> "
+  fi
+  read -n 1 -r session_num
+
+  # Check for ESC key
+  if [ "$session_num" = $'\e' ]; then
+    echo ""  # newline
+    echo -e "${DIM}Cancelled${RESET}"
+    exit 0
+  fi
+
+  echo ""  # newline after single char input
+
+  # Default to 1 if empty
+  [ -z "$session_num" ] && session_num=1
+
+  # Validate input
+  if ! [[ "$session_num" =~ ^[0-9]$ ]]; then
+    echo -e "${DIM}Invalid selection. Please choose 0-${max_session_num}.${RESET}"
+    echo ""
+    continue
+  fi
+
+  if [ "$session_num" -eq 0 ]; then
+    selected_uuid=""
+    echo -e "${GREEN}✓${RESET} Selected: New session"
+    break
+  elif [ "$session_num" -ge 1 ] && [ "$session_num" -le "$max_session_num" ]; then
+    selected_uuid="${session_uuids[$((session_num-1))]}"
+    selected_time="${session_times[$((session_num-1))]}"
+    short_uuid="${selected_uuid:0:7}"
+    echo -e "${GREEN}✓${RESET} Selected: ${selected_time} ${short_uuid}"
+    break
+  else
+    echo -e "${DIM}Invalid selection. Please choose 0-${max_session_num}.${RESET}"
+    echo ""
+  fi
+done
+
+echo ""
+
+# Step 2: Select MCP Profile
+# Check if project has .mcp.json
+has_project_mcp=false
+if [ -f "$PROJECT_ROOT/.mcp.json" ]; then
+  has_project_mcp=true
+fi
+
+# Scan for available profiles
+profiles=()
+profile_dir="$PROJECT_ROOT/.claude/mcp_profiles"
+if [ -d "$profile_dir" ]; then
+  while IFS= read -r -d '' file; do
+    basename=$(basename "$file" .json)
+    profiles+=("$basename")
+  done < <(find "$profile_dir" -name "*.json" -print0 | sort -z)
+fi
+
+# Display profiles
+echo -e "${BOLD}Select MCP Profile:${RESET}"
+
+# Calculate offset for profile numbering
+offset=1
+if [ "$has_project_mcp" = true ]; then
+  echo "1) .mcp.json *"
+else
+  echo "1) default *"
+fi
+
+for i in "${!profiles[@]}"; do
+  echo "$((i+1+offset))) ${profiles[$i]}"
+done
+echo "0) none"
+echo ""
+
+# Determine prompt text
+max_profile_num=$((${#profiles[@]} + offset))
+if [ "$has_project_mcp" = true ]; then
+  default_label=".mcp.json"
+else
+  default_label="default"
+fi
+
+while true; do
+  if [ ${#profiles[@]} -gt 0 ]; then
+    echo -e -n "Your pick [1-${max_profile_num}]: ${DIM}Hit Return to select ${default_label}${RESET}\n> "
+  else
+    echo -e -n "Your pick: ${DIM}Hit Return to select ${default_label}${RESET}\n> "
+  fi
+  read -n 1 -r profile_num
+
+  # Check for ESC key
+  if [ "$profile_num" = $'\e' ]; then
+    echo ""  # newline
+    echo -e "${DIM}Cancelled${RESET}"
+    exit 0
+  fi
+
+  echo ""  # newline after single char input
+
+  # Default to 1 if empty
+  [ -z "$profile_num" ] && profile_num=1
+
+  # Validate selection
+  if [ "$profile_num" -eq 0 ]; then
+    profile="none"
+    echo -e "${GREEN}✓${RESET} Selected: none"
+    break
+  elif [ "$profile_num" -eq 1 ]; then
+    # Option 1 is either .mcp.json or default
+    if [ "$has_project_mcp" = true ]; then
+      profile=".mcp.json"
+      echo -e "${GREEN}✓${RESET} Selected: .mcp.json"
+    else
+      profile="default"
+      echo -e "${GREEN}✓${RESET} Selected: default"
+    fi
+    break
+  elif [ "$profile_num" -ge $((1+offset)) ] && [ "$profile_num" -le "$max_profile_num" ]; then
+    profile="${profiles[$((profile_num-1-offset))]}"
+    echo -e "${GREEN}✓${RESET} Selected: ${profile}"
+    break
+  else
+    echo -e "${DIM}Invalid selection. Please choose 0-${max_profile_num}.${RESET}"
+    echo ""
+  fi
+done
+
+echo ""
+
+# Step 3: Yolo mode?
+while true; do
+  echo -n -e "${BOLD}Yolo mode${RESET} (skip permissions)? [y/N] "
+  read -n 1 -r yolo
+
+  # Check for ESC key
+  if [ "$yolo" = $'\e' ]; then
+    echo ""  # newline
+    echo -e "${DIM}Cancelled${RESET}"
+    exit 0
+  fi
+
+  echo ""  # newline after single char input
+
+  # Accept y, n, or empty (return)
+  if [[ -z "$yolo" ]] || [[ "$yolo" =~ ^[YyNn]$ ]]; then
+    break
+  else
+    echo -e "${DIM}Please press 'y', 'n', or Return${RESET}"
+  fi
+done
+echo ""
+
+# Build command
+cmd="claude"
+
+# Handle MCP config based on selection
+if [ "$profile" = ".mcp.json" ] || [ "$profile" = "default" ]; then
+  # Use project .mcp.json or default behavior (no flags needed)
+  :
+elif [ "$profile" = "none" ]; then
+  # Use empty config
+  cmd="$cmd --mcp-config \"$PROJECT_ROOT/.claude/mcp_profiles/none.json\""
+  cmd="$cmd --strict-mcp-config"
+else
+  # Use selected profile
+  cmd="$cmd --mcp-config \"$PROJECT_ROOT/.claude/mcp_profiles/${profile}.json\""
+  cmd="$cmd --strict-mcp-config"
+fi
+
+if [[ "$yolo" =~ ^[Yy]$ ]]; then
+  cmd="$cmd --dangerously-skip-permissions"
+fi
+
+# Handle resume
+if [ -n "$selected_uuid" ]; then
+  cmd="$cmd -r $selected_uuid"
+fi
+
+# Show command
+echo -e "${DIM}Running:${RESET} $cmd"
+echo ""
+
+# Execute
+eval "$cmd"

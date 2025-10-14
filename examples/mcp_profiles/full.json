@@ -1,0 +1,45 @@
+{
+  "mcpServers": {
+    "language-server": {
+      "command": "mcp-language-server",
+      "args": [
+        "--workspace",
+        "/home/gulp/projects/claude-viz",
+        "--lsp",
+        "typescript-language-server",
+        "--",
+        "--stdio"
+      ]
+    },
+    "chrome-devtools": {
+      "command": "npx",
+      "args": [
+        "chrome-devtools-mcp@latest",
+        "--browserUrl=http://localhost:9222/json"
+      ]
+    },
+    "git": {
+      "command": "uvx",
+      "args": ["mcp-server-git"]
+    },
+    "shadcn": {
+      "command": "npx",
+      "args": ["shadcn@latest", "mcp"]
+    },
+    "serena": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/oraios/serena",
+        "serena",
+        "start-mcp-server",
+        "--context",
+        "claude",
+        "--project",
+        "/home/gulp/projects/claude-viz/"
+      ],
+      "env": {}
+    }
+  }
+}
