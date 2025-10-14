@@ -2,33 +2,15 @@
   "mcpServers": {
     "git": {
       "command": "uvx",
-      "args": ["mcp-server-git"]
+      "args": ["mcp-server-git", "--repository", "."]
     },
-    "serena": {
-      "type": "stdio",
-      "command": "uvx",
-      "args": [
-        "--from",
-        "git+https://github.com/oraios/serena",
-        "serena",
-        "start-mcp-server",
-        "--context",
-        "claude",
-        "--project",
-        "/home/gulp/projects/claude-viz/"
-      ],
-      "env": {}
-    },
-    "shadcn": {
+    "filesystem": {
       "command": "npx",
-      "args": ["shadcn@latest", "mcp"]
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
     },
-    "chrome-devtools": {
+    "puppeteer": {
       "command": "npx",
-      "args": [
-        "chrome-devtools-mcp@latest",
-        "--browserUrl=http://localhost:9222/json"
-      ]
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
     }
   }
 }
