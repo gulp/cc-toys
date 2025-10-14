@@ -1,25 +1,27 @@
 # CLAUDE.md
 
-Project guidance for Claude Code when working with the Claude Start toolkit.
+Project guidance for Claude Code when working with cc-toys.
 
 ## Project Overview
 
-**Claude Start** is a toolkit for enhancing the Claude Code CLI experience with:
-- `claude-start`: Interactive TUI for launching Claude sessions
+**cc-toys** - Small, friendly CLI helpers for Claude Code. Not a framework, just a couple of shell toys that make Claude sessions easier.
+
+Tools:
+- `ccup`: Interactive TUI for launching Claude sessions
 - `agentenv`: Agent profile management via symlinks
 
-**Purpose**: Provide a polished, user-friendly interface for session management, MCP configuration, and agent profile switching.
+**Purpose**: Provide helpful, approachable tools for session management, MCP configuration, and agent profile switching.
 
 **Target Users**: Claude Code CLI users who want better session resumption, quick MCP profile switching, and agent management.
 
 ## Architecture
 
-### claude-start (scripts/claude-start)
+### ccup (scripts/ccup)
 
 **Purpose**: Interactive launcher for Claude Code sessions
 
 **Key Components**:
-1. **Project Selection** (`cs -a` mode)
+1. **Project Selection** (`ccup -a` mode)
    - Reads `~/.claude.json` for onboarded projects
    - Detects and offers to clean up orphaned paths
    - Uses `jq` to validate `hasCompletedProjectOnboarding`
@@ -71,12 +73,17 @@ User → Project validation (if no -a)
    - Global: `~/.claude/agents.env/` → `~/.claude/agents/`
    - Project: `.claude/agents.env/` → `.claude/agents/`
 
-2. **Profile Loading**
+2. **Modes of Operation**
+   - **Profile mode**: `agentenv <profile>` - loads from agents_config.json, includes default agents
+   - **Only mode**: `agentenv --only <agent>` - single agent, no defaults
+   - **Clear mode**: `agentenv --clear` - remove all agent symlinks
+
+3. **Profile Loading** (profile mode only)
    - Reads `agents_config.json` from agents.env/
    - Merges `default` + `profiles[name]` arrays
    - Supports wildcard `["*"]` for all agents
 
-3. **Symlink Management**
+4. **Symlink Management**
    - Atomic: clear all existing symlinks first
    - Create new symlinks from agents.env/ to agents/
    - Visual feedback with counts
@@ -84,37 +91,53 @@ User → Project validation (if no -a)
 **Design Decisions**:
 - Symlinks (not copies) for single source of truth
 - Atomic switching (clear + create) to avoid partial states
-- Default agents always included in every profile
-- JSON config for easy editing
+- Default agents always included in profile mode (not in --only mode)
+- JSON config for easy editing (only needed for profile mode)
+- --only and --clear don't require agents_config.json
 
 **Data Flow**:
 ```
+# Profile mode
 User → agentenv [--global] <profile>
      → Read agents_config.json
      → Clear existing symlinks in agents/
      → Merge default + profile agents
      → Create symlinks from agents.env/
      → Report counts
+
+# Only mode
+User → agentenv [--global] --only <agent>
+     → Clear existing symlinks in agents/
+     → Create single symlink for agent
+     → Report counts
+
+# Clear mode
+User → agentenv [--global] --clear
+     → Clear all symlinks in agents/
+     → Report counts
 ```
 
 ## File Structure
 
 ```
-claude-start/
+cc-toys/
 ├── CLAUDE.md                      # This file
 ├── README.md                      # User documentation
 ├── LICENSE                        # MIT License
 ├── scripts/
-│   ├── claude-start              # Session launcher (bash)
+│   ├── ccup                      # Session launcher (bash)
 │   └── agentenv                  # Agent manager (bash)
 └── examples/
     ├── mcp_profiles/             # Example MCP configs
-    │   ├── core.json            # Minimal (git + serena)
-    │   ├── full.json            # All servers
-    │   ├── none.json            # Empty config
-    │   ├── research.json        # Research-focused
-    │   └── ui.json              # UI development
-    └── agents_config.json        # Example agent profiles
+    │   ├── core.json
+    │   ├── full.json
+    │   ├── research.json
+    │   └── ui.json
+    ├── agents/                   # Demo agents
+    │   ├── pong.md
+    │   ├── explainer.md
+    │   └── therapist.md
+    └── agents_config.json
 ```
 
 ## Development Guidelines
@@ -127,7 +150,7 @@ claude-start/
 - **Input validation**: Check ranges, handle ESC key
 - **Comments**: Explain non-obvious logic
 
-### Adding Features to claude-start
+### Adding Features to ccup
 
 **When adding new selection steps**:
 1. Use consistent prompt format: `Your pick [1-N]: ${DIM}Hit Return to...${RESET}`
@@ -159,7 +182,7 @@ claude-start/
 
 ## Testing Approach
 
-### Manual Testing claude-start
+### Manual Testing ccup
 
 1. **Session selection**:
    - Test with 0 sessions (new project)
@@ -187,15 +210,27 @@ claude-start/
    - Test empty profile
    - Test missing agent files
 
-2. **Scope handling**:
+2. **Only mode**:
+   - Test `--only` with valid agent
+   - Test `--only` with missing agent
+   - Test `--only` clears existing symlinks
+   - Test `--global --only`
+
+3. **Clear mode**:
+   - Test `--clear` with active agents
+   - Test `--clear` with no agents
+   - Test `--global --clear`
+
+4. **Scope handling**:
    - Test project-local mode
    - Test --global mode
-   - Test with missing config
+   - Test with missing config (profile mode should fail, --only/--clear should work)
 
-3. **Edge cases**:
+5. **Edge cases**:
    - Missing agents.env/ directory
-   - Invalid JSON in config
+   - Invalid JSON in config (profile mode only)
    - Profile name not in config
+   - Agent name without .md extension
 
 ## Common Tasks
 
@@ -205,7 +240,7 @@ claude-start/
 3. Commit with description of profile purpose
 
 ### Improve session display formatting
-1. Read current implementation in scripts/claude-start
+1. Read current implementation in scripts/ccup
 2. Test changes with various session data
 3. Ensure ANSI codes don't break column alignment
 4. Update README if user-visible changes
@@ -250,17 +285,18 @@ claude-start/
 
 ## Notes for Future Sessions
 
-- The `claude-start` script uses PWD for project detection (not script location)
+- The `ccup` script uses PWD for project detection (not script location)
 - Column widths are dynamically calculated from actual content
 - ANSI styling must be applied AFTER padding to maintain alignment
 - The `--global` flag in `agentenv` changes both source and target paths
-- Default agents are ALWAYS included (merged with profile agents)
+- Default agents are ALWAYS included in profile mode (not in --only mode)
+- `agentenv --only` and `--clear` work without agents_config.json
 - ESC key support requires checking for `$'\e'` character
 - Session UUIDs are stored in separate array parallel to display array
 
 ## Publishing Notes
 
-**GitHub repo**: https://github.com/YOUR_USERNAME/claude-start
+**GitHub repo**: https://github.com/gulp/cc-toys
 
 **To publish updates**:
 1. Make changes and test thoroughly
@@ -274,3 +310,7 @@ claude-start/
 - Welcome PRs with clear guidelines
 - Keep README and examples up to date
 - Consider creating Wiki for advanced usage
+
+## Sessions System Behaviors
+
+@CLAUDE.sessions.md

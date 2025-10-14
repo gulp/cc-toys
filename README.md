@@ -1,353 +1,397 @@
-# Claude Start
+# cc-toys
 
-A comprehensive toolkit for launching Claude Code sessions with enhanced UX and intelligent configuration management.
+Small, friendly CLI helpers for Claude Code.
 
-## Features
+They're not a framework. They're not even a toolkit.
+Just a couple of shell toys that make Claude sessions a little easier to live with.
 
-### `claude-start` - Session Launcher TUI
-An interactive terminal UI for starting Claude Code sessions with:
+Generated end-to-end with Claude Code. I just pressed Enter and pretended to supervise.
+Use at your own risk (and curiosity).
 
-- **Session Management**
-  - Pretty date formatting (Today, Yesterday, Oct 14)
-  - Dynamic column sizing based on content
-  - Latest session marked with asterisk (*)
-  - Git branch display with smart truncation
-  - Show up to 9 recent sessions
+---
 
-- **MCP Profile Selection**
-  - Auto-detect project `.mcp.json`
-  - Dynamic profile discovery from `.claude/mcp_profiles/`
-  - Quick switching between profiles
-  - Support for "none" (empty config) and "default" (Claude defaults)
+## Why cc-toys?
 
-- **Project Validation**
-  - Validates against `~/.claude.json` onboarded projects
-  - Interactive cleanup of orphaned project paths
-  - Clear error messages for invalid projects
+Because getting back into a Claude Code session shouldn't feel like a ritual.
 
-- **User Experience**
-  - Visible input feedback
-  - Range-based prompts: "Your pick [1-7]"
-  - Green checkmark confirmations
-  - ESC key support for cancellation
+By default, you have to launch Claude first, then /resume, then guess which session you were in. ccup flips that around — it shows your sessions before Claude opens, with timestamps, branches, and message previews, so you can jump straight to what you were doing.
 
-### `agentenv` - Agent Profile Manager
-Manage Claude Code agent profiles with symlink-based activation:
+It also handles MCP overhead. Each extra server quietly eats into your context, even if you're just checking a note. With ccup, you can pick a lighter MCP profile or run with none at all. Pair it with agentenv to toggle agents per project, and you'll stop wasting tokens on idle ones.
 
-- **Profile Management**
-  - Project-local or global (`--global`) agent profiles
-  - JSON-configured profiles with default agents
-  - Wildcard support for "all agents" profile
+Less juggling, more continuity.
 
-- **Features**
-  - List available profiles and agents
-  - Atomic profile switching (clear + create)
-  - Visual feedback with counts and confirmations
+---
+
+## Commands
+
+- **ccup** — resume or start a Claude Code session (with MCP profiles, project switching, scaffolding)
+- **agentenv** — switch agent profiles via symlinks (project or global scope)
+
+---
 
 ## Installation
 
-### Prerequisites
-- Claude Code CLI (`claude` command)
-- `jq` for JSON processing
-- Bash 4.0+
+```bash
+curl -fsSL https://raw.githubusercontent.com/gulp/cc-toys/main/install.sh | bash
+```
 
-### Setup
+Or pin to a version:
+```bash
+VERSION=v0.1.0 bash -c "$(curl -fsSL https://raw.githubusercontent.com/gulp/cc-toys/main/install.sh)"
+```
 
-1. **Clone or download this repository**
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/claude-start.git
-   cd claude-start
-   ```
+### Manual Install
 
-2. **Install scripts**
-   ```bash
-   # Make scripts executable
-   chmod +x scripts/claude-start scripts/agentenv
+```bash
+git clone https://github.com/gulp/cc-toys.git
+cd cc-toys
+chmod +x scripts/*
+ln -s "$(pwd)/scripts/ccup" ~/.local/bin/ccup
+ln -s "$(pwd)/scripts/agentenv" ~/.local/bin/agentenv
+```
 
-   # Add to PATH (choose one method):
-
-   # Option 1: Symlink to ~/.local/bin
-   ln -s "$(pwd)/scripts/claude-start" ~/.local/bin/cs
-   ln -s "$(pwd)/scripts/agentenv" ~/.local/bin/agentenv
-
-   # Option 2: Add to PATH in your shell rc file
-   echo 'export PATH="$HOME/path/to/claude-start/scripts:$PATH"' >> ~/.bashrc
-   echo 'alias cs="claude-start"' >> ~/.bashrc
-   ```
-
-3. **Set up MCP profiles** (per project)
-   ```bash
-   # Copy example profiles to your project
-   mkdir -p your-project/.claude/mcp_profiles
-   cp examples/mcp_profiles/*.json your-project/.claude/mcp_profiles/
-
-   # Customize profiles as needed
-   ```
-
-4. **Set up agent profiles** (optional)
-   ```bash
-   # For global agent management
-   mkdir -p ~/.claude/agents.env
-   cp examples/agents_config.json ~/.claude/agents.env/
-
-   # Add your agent .md files to ~/.claude/agents.env/
-
-   # For project-local management
-   mkdir -p your-project/.claude/agents.env
-   cp examples/agents_config.json your-project/.claude/agents.env/
-   ```
+---
 
 ## Usage
 
-### claude-start
+### ccup - Session Launcher
 
-#### Basic Usage
 ```bash
-# From within a Claude project
-cs
+# From any Claude Code project
+ccup
 
 # Select from all onboarded projects
-cs -a    # or cs --all
+ccup -a
+
+# Copy MCP profiles and demo agents to project
+ccup --scaffold
 ```
 
-#### Session Selection
-The launcher shows recent sessions with:
-- Date/time (Today, Yesterday, or Oct 14)
-- Git branch in brackets: `[develop]`, `[feature/foo]`
-- Preview of last message
-- Asterisk (*) on most recent session
+**What it does:**
+1. Shows your recent sessions (smart filtered, no orphans)
+2. Let you pick MCP profile (or use project default)
+3. Asks about yolo mode (skip permissions)
+4. Launches Claude with your selections
 
+**Features:**
+- Pretty dates: "Today, 14:30", "Yesterday", "Oct 14"
+- Git branch display with smart truncation
+- Message previews from last input
+- Latest session marked with `*`
+- ESC key to cancel at any step
+- Single-key navigation (1-9, 0)
+
+**Example:**
 ```
 Select Session:
-1) Today, 12:30 *  [develop]        "implement feature X..."
-2) Yesterday, 15:45 [feature/auth]  "fix login bug..."
-3) Oct 13, 09:20   [main]           "refactor parser..."
+1) Today, 14:30 *   [feature/auth]   "implement OAuth login..."
+2) Today, 11:45     [develop]        "fix session bug..."
+3) Yesterday, 16:20 [main]           "refactor API client..."
 0) New session
 
 Your pick [1-3]: Hit Return to select latest
 > 1
-✓ Selected: Today, 12:30 abc1234
-```
+✓ Selected: Today, 14:30 * abc1234
 
-#### MCP Profile Selection
-Choose MCP server configuration:
-
-```
 Select MCP Profile:
-1) default *
+1) .mcp.json *
 2) core
-3) full
-4) research
+3) research
 0) none
 
-Your pick [1-4]: Hit Return to select default
+Your pick [1-3]: Hit Return to select .mcp.json
 > 2
 ✓ Selected: core
+
+Yolo mode (skip permissions)? [y/N] n
+
+Running: claude --mcp-config ".claude/mcp_profiles/core.json" --strict-mcp-config -r abc1234
 ```
 
-**Profile Types:**
-- **default**: Uses Claude's default MCP behavior (no flags)
-- **.mcp.json**: Uses project's `.mcp.json` if present (shows as option 1)
-- **none**: Empty MCP config (disables all servers)
-- **custom**: Any profile from `.claude/mcp_profiles/`
+---
 
-#### Yolo Mode
-Skip permission prompts:
-```
-Yolo mode (skip permissions)? [y/N] y
-```
+### agentenv - Agent Manager
 
-### agentenv
-
-#### List Profiles
 ```bash
-# Project-local profiles
-agentenv
+# List available profiles
+agentenv              # Project scope
+agentenv --global     # Global scope
 
-# Global profiles
-agentenv --global
+# Activate a profile
+agentenv demo         # Project: activate pong, explainer, therapist
+agentenv --global full  # Global: activate all agents
+
+# Quick operations
+agentenv --only pong         # Activate single agent
+agentenv --clear             # Remove all agents
+agentenv --global --only pong  # Global single agent
 ```
 
-Output:
-```
-Scope: project
+**What it does:**
+- Manages which agents are available via symlinks
+- Supports project-local or global agent profiles
+- Atomic switching (clears old, creates new)
+- Default agents always included in profile mode
 
-Available profiles:
-  bmad: business-analyst, architect
-  product: business-analyst, product-manager
-  full: *
-  none:
+**How it works:**
+- Agents live in `.claude/agents.env/` (project) or `~/.claude/agents.env/` (global)
+- Active agents are symlinked to `.claude/agents/` or `~/.claude/agents/`
+- Profile config (`agents_config.json`) defines which agents to activate
 
-Default agents (always included):
-context-gathering, context-refinement, logging
+**Operations:**
+- `agentenv <profile>` - Switch to profile (includes default agents)
+- `agentenv --only <agent>` - Activate single agent (no defaults)
+- `agentenv --clear` - Remove all agents
 
-Available agents in .claude/agents.env:
-  • architect
-  • business-analyst
-  • code-review
-  • product-manager
-  • test-automator
-```
+---
 
-#### Activate Profile
+### Scaffolding
+
+**ccup --scaffold** copies examples to your project:
+
 ```bash
-# Project-local
-agentenv bmad
+cd your-project
+ccup --scaffold
 
-# Global
-agentenv --global full
+# Choose:
+# 1) MCP profiles (core, research, ui, full)
+# 2) Demo agents (pong, explainer, therapist)
+# 3) Both
 ```
 
-Output:
-```
-Agent Environment: bmad (project)
+**Creates:**
+- `.claude/mcp_profiles/*.json` - Ready-to-use MCP configurations
+- `.claude/agents.env/*.md` - Demo agents you can test immediately
+- `.claude/agents.env/agents_config.json` - Agent profile configuration
 
-Clearing 3 existing symlink(s)...
-  ✓ context-gathering
-  ✓ context-refinement
-  ✓ logging
-  ✓ business-analyst
-  ✓ architect
+---
 
-✓ Cleared 3 symlink(s), created 5 symlink(s) for profile: bmad
-```
+## MCP Profiles
 
-## Configuration
+Included examples:
 
-### MCP Profiles
-
-Create profile files in `.claude/mcp_profiles/*.json`:
-
-**Example: `core.json`**
+### core.json
+Essential servers only:
 ```json
 {
   "mcpServers": {
-    "git": {
-      "command": "mcp-server-git",
-      "args": ["--repository", "."]
-    },
-    "serena": {
-      "command": "npx",
-      "args": ["-y", "mcp-serena"]
-    }
+    "git": {...},
+    "filesystem": {...}
   }
 }
 ```
 
-**Example: `none.json`**
+### research.json
+Web research with AI search:
 ```json
 {
-  "mcpServers": {}
-}
-```
-
-### Agent Profiles
-
-Configure in `agents_config.json`:
-
-```json
-{
-  "default": [
-    "context-gathering",
-    "context-refinement",
-    "logging"
-  ],
-  "profiles": {
-    "bmad": [
-      "business-analyst",
-      "architect"
-    ],
-    "product": [
-      "business-analyst",
-      "product-manager"
-    ],
-    "full": ["*"],
-    "none": []
+  "mcpServers": {
+    "git": {...},
+    "fetch": {...},
+    "puppeteer": {...},
+    "exa": {...},         // Requires API key from exa.ai
+    "context7": {...}
   }
 }
 ```
 
-**Fields:**
-- `default`: Agents included in all profiles
-- `profiles.<name>`: List of agents for that profile
-- `"*"`: Wildcard - includes all agents from `agents.env/`
-
-## Project Structure
-
-```
-claude-start/
-├── README.md
-├── LICENSE
-├── scripts/
-│   ├── claude-start      # Session launcher TUI
-│   └── agentenv          # Agent profile manager
-└── examples/
-    ├── mcp_profiles/     # Example MCP configurations
-    │   ├── core.json     # Git + Serena only
-    │   ├── full.json     # All MCP servers
-    │   ├── none.json     # Empty config
-    │   ├── research.json # Research-focused servers
-    │   └── ui.json       # UI development servers
-    └── agents_config.json # Example agent profiles
+### ui.json
+Browser automation for UI work:
+```json
+{
+  "mcpServers": {
+    "git": {...},
+    "filesystem": {...},
+    "puppeteer": {...}
+  }
+}
 ```
 
-## Requirements
+### full.json
+Comprehensive setup:
+```json
+{
+  "mcpServers": {
+    "git": {...},
+    "filesystem": {...},
+    "fetch": {...},
+    "puppeteer": {...},
+    "sqlite": {...}
+  }
+}
+```
 
-- **Claude Code**: Latest version with MCP support
-- **jq**: JSON processor (`sudo apt install jq` or `brew install jq`)
-- **bash**: Version 4.0 or higher
-- **~/.claude.json**: Claude project registry (created by Claude Code)
+> **Note:** The `exa` server in research.json requires an API key. Get one from [exa.ai](https://exa.ai) and replace `YOUR_EXA_API_KEY`.
+
+---
+
+## Demo Agents
+
+### pong.md
+Simple test agent to verify the agent system works.
+
+```bash
+agentenv demo
+# Then use Task tool → pong agent
+# Response: "🏓 Pong! Agent system is working!"
+```
+
+### explainer.md
+Breaks down complex concepts into simple explanations.
+
+**Format:**
+1. One-sentence summary
+2. Concrete example
+3. Common misconception
+4. Next step
+
+### therapist.md
+A tongue-in-cheek agent for when debugging gets existential.
+
+**Crisis indicators:**
+- More than 3 consecutive "sorry" messages
+- Error contains both "undefined" AND "null"
+- Commit message is just "fix" or "aaaaaa"
+- "it worked on my machine"
+
+**Sample mantras:**
+- "You ship, therefore you are."
+- "The semicolon didn't make you less worthy."
+- "`npm install forgiveness`"
+
+---
 
 ## Tips
 
-1. **Alias for speed**
-   ```bash
-   alias cs="claude-start"
-   ```
+**Speed optimization:**
+```bash
+# Hit Return 3 times → launched in ~1 second
+ccup
+# (Selects: latest session, default MCP, no yolo)
+```
 
-2. **Quick project switching**
-   ```bash
-   cs -a  # Lists all onboarded projects
-   ```
+**Workflow patterns:**
+```bash
+# Resume yesterday's work
+ccup
 
-3. **Create custom MCP profiles** for different workflows:
-   - `dev.json`: Development servers (git, serena, filesystem)
-   - `review.json`: Code review tools only
-   - `minimal.json`: Bare minimum servers
+# New session with different MCP profile
+ccup  # Pick 0 (new), then select profile
 
-4. **Agent profile strategy**:
-   - Use global profiles for common setups
-   - Use project profiles for specialized needs
-   - Keep `default` agents minimal (always loaded)
+# Quick project switching
+ccup -a
+
+# Set up a fresh project
+ccup --scaffold
+```
+
+**Custom profiles:**
+Create your own in `.claude/mcp_profiles/`:
+- `minimal.json` - No MCP servers (fastest)
+- `dev.json` - Your daily drivers
+- `review.json` - Git only for code reviews
+
+---
 
 ## Troubleshooting
 
-### "Not in an onboarded Claude project"
-- Run `cs -a` to select a valid project
-- Or navigate to a project directory with `.claude/` folder
+### "Not in a Claude Code project"
+Run `ccup -a` to select a valid project, or navigate to a directory with `.claude/`
 
 ### Orphaned project paths
-- `cs -a` will detect and prompt to remove non-existent paths
-- Cleans up `~/.claude.json` automatically with permission
+`ccup -a` detects missing directories and offers to remove them from `~/.claude.json`
 
-### MCP profile not loading
-- Verify JSON syntax: `jq . .claude/mcp_profiles/your-profile.json`
-- Check file permissions
-- Ensure `.mcp.json` or selected profile exists
+### MCP profile not loading on resume
+MCP selection only applies to **new sessions**. When resuming, the original session's MCP config is used (Claude Code limitation).
 
-### Agent symlinks not working
-- Verify `agents_config.json` exists
-- Check that agent `.md` files exist in `agents.env/`
-- Run `agentenv` with no args to list available agents
+### Session won't resume
+The script filters invalid sessions automatically. If you see one that won't resume:
+1. Update to latest cc-toys
+2. Report the issue with session UUID
 
-## License
+---
 
-MIT License - see [LICENSE](LICENSE) for details
+## Project Structure
+
+**Repository:**
+```
+cc-toys/
+├── scripts/
+│   ├── ccup            # Session launcher
+│   └── agentenv        # Agent manager
+├── install.sh          # One-line installer
+├── uninstall.sh        # Clean removal
+└── examples/
+    ├── mcp_profiles/   # MCP configuration examples
+    │   ├── core.json
+    │   ├── research.json
+    │   ├── ui.json
+    │   └── full.json
+    ├── agents/         # Demo agent examples
+    │   ├── pong.md
+    │   ├── explainer.md
+    │   ├── therapist.md
+    │   └── README.md
+    └── agents_config.json
+```
+
+**Installed examples** (at `~/.local/share/cc-toys/examples/`):
+```
+examples/
+├── mcp_profiles/
+│   ├── core.json
+│   ├── research.json
+│   ├── ui.json
+│   └── full.json
+└── agents.env/
+    ├── pong.md
+    ├── explainer.md
+    ├── therapist.md
+    ├── agents_config.json
+    └── README.md
+```
+
+---
+
+## Requirements
+
+- **Claude Code CLI** - The `claude` command ([download](https://claude.ai/download))
+- **jq** - JSON processor
+  - macOS: `brew install jq`
+  - Ubuntu/Debian: `sudo apt install jq`
+  - Arch: `sudo pacman -S jq`
+- **Bash 4.0+**
+
+---
+
+## Uninstall
+
+```bash
+./uninstall.sh
+```
+
+Or manually:
+```bash
+rm ~/.local/bin/ccup ~/.local/bin/agentenv
+```
+
+---
 
 ## Contributing
 
-Contributions welcome! Please open an issue or pull request.
+Found a bug? Have an idea? [Open an issue](https://github.com/gulp/cc-toys/issues).
 
-## Acknowledgments
+Want to add a tool? Keep it:
+- Small (< 500 lines)
+- Focused (does one thing well)
+- Friendly (helpful errors, clear output)
 
-Built for the Claude Code community to enhance the CLI experience.
+---
+
+## License
+
+MIT - See [LICENSE](LICENSE)
+
+---
+
+**Made with Claude Code** 🤖
