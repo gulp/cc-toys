@@ -131,6 +131,20 @@ if [ -d "$SESSION_DIR" ]; then
     # Get file mod time and git branch
     file="$SESSION_DIR/${uuid}.jsonl"
     if [ -f "$file" ]; then
+      # Validate session file (skip orphaned/incomplete sessions)
+      file_size=$(stat -c %s "$file" 2>/dev/null || echo 0)
+      if [ "$file_size" -lt 100 ]; then
+        # File too small, likely incomplete session
+        continue
+      fi
+
+      # Check if session has at least one assistant message (indicates real conversation)
+      has_assistant=$(grep -q '"role":"assistant"' "$file" 2>/dev/null && echo "yes" || echo "no")
+      if [ "$has_assistant" = "no" ]; then
+        # No assistant response, session never really started
+        continue
+      fi
+
       timestamp=$(stat -c '%y' "$file" | cut -d'.' -f1) || continue
       # Extract git branch from first line with gitBranch (allow failure)
       branch=$(grep -m1 '"gitBranch"' "$file" 2>/dev/null | grep -o '"gitBranch":"[^"]*"' | cut -d'"' -f4 || echo "--")
