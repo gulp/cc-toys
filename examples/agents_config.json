@@ -1,20 +1,19 @@
 {
   "default": [
-    "code-review",
     "context-gathering",
     "context-refinement",
     "logging"
   ],
   "profiles": {
-    "frontend": [
-      "frontend-developer",
-      "test-automator"
+    "demo": [
+      "pong",
+      "explainer",
+      "therapist"
     ],
-    "backend": [
-      "typescript-pro",
-      "debugger"
+    "minimal": [
+      "pong"
     ],
     "full": ["*"],
-    "minimal": []
+    "none": []
   }
 }
