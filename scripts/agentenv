@@ -9,12 +9,31 @@ GREEN='\033[32m'
 YELLOW='\033[33m'
 CYAN='\033[36m'
 
-# Check for --global flag
+# Parse flags
 GLOBAL=false
-if [ "${1:-}" = "--global" ]; then
-  GLOBAL=true
-  shift
-fi
+ONLY_MODE=false
+CLEAR_MODE=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --global)
+      GLOBAL=true
+      shift
+      ;;
+    --only)
+      ONLY_MODE=true
+      shift
+      break  # Next arg is agent name
+      ;;
+    --clear)
+      CLEAR_MODE=true
+      shift
+      ;;
+    *)
+      break  # Non-flag argument, stop parsing
+      ;;
+  esac
+done
 
 # Set paths based on scope
 if [ "$GLOBAL" = true ]; then
@@ -31,7 +50,73 @@ else
   SCOPE="project"
 fi
 
-# Check if config exists
+# Handle --clear mode
+if [ "$CLEAR_MODE" = true ]; then
+  echo -e "${BOLD}Agent Environment:${RESET} clear ${DIM}($SCOPE)${RESET}\n"
+
+  cleared=0
+  if [ -d "$AGENTS_DIR" ]; then
+    cleared=$(find "$AGENTS_DIR" -type l | wc -l)
+    if [ $cleared -gt 0 ]; then
+      find "$AGENTS_DIR" -type l -delete
+      echo -e "${GREEN}✓${RESET} Cleared $cleared symlink(s)"
+    else
+      echo -e "${DIM}No symlinks to clear${RESET}"
+    fi
+  else
+    echo -e "${DIM}No agents directory found${RESET}"
+  fi
+
+  exit 0
+fi
+
+# Handle --only mode
+if [ "$ONLY_MODE" = true ]; then
+  if [ $# -eq 0 ]; then
+    echo -e "${YELLOW}Error:${RESET} --only requires an agent name"
+    echo "Usage: agentenv [--global] --only <agent-name>"
+    exit 1
+  fi
+
+  AGENT_NAME="$1"
+
+  echo -e "${BOLD}Agent Environment:${RESET} only ${BOLD}$AGENT_NAME${RESET} ${DIM}($SCOPE)${RESET}\n"
+
+  # Clear existing symlinks
+  cleared=0
+  if [ -d "$AGENTS_DIR" ]; then
+    cleared=$(find "$AGENTS_DIR" -type l | wc -l)
+    if [ $cleared -gt 0 ]; then
+      echo -e "${DIM}Clearing $cleared existing symlink(s)...${RESET}"
+      find "$AGENTS_DIR" -type l -delete
+    fi
+  fi
+
+  mkdir -p "$AGENTS_DIR"
+
+  # Create single symlink
+  source="$AGENTS_ENV/${AGENT_NAME}.md"
+  target="$AGENTS_DIR/${AGENT_NAME}.md"
+
+  if [ ! -f "$source" ]; then
+    echo -e "${YELLOW}Error:${RESET} Agent not found: $source"
+    exit 1
+  fi
+
+  ln -s "$source" "$target"
+  echo -e "  ${GREEN}✓${RESET} $AGENT_NAME"
+  echo ""
+
+  if [ $cleared -gt 0 ]; then
+    echo -e "${GREEN}✓${RESET} Cleared $cleared symlink(s), created 1 symlink"
+  else
+    echo -e "${GREEN}✓${RESET} Created 1 symlink"
+  fi
+
+  exit 0
+fi
+
+# Check if config exists (only needed for profile mode)
 if [ ! -f "$CONFIG_FILE" ]; then
   echo -e "${YELLOW}Warning:${RESET} $CONFIG_FILE not found"
   exit 1
@@ -39,7 +124,10 @@ fi
 
 # Usage / Listing
 if [ $# -eq 0 ]; then
-  echo -e "${BOLD}Usage:${RESET} agentenv [--global] <profile>"
+  echo -e "${BOLD}Usage:${RESET}"
+  echo "  agentenv [--global] <profile>       # Switch to profile"
+  echo "  agentenv [--global] --only <agent>  # Activate single agent"
+  echo "  agentenv [--global] --clear         # Remove all agents"
   echo ""
   echo -e "${CYAN}Scope:${RESET} $SCOPE"
   echo ""
