@@ -254,7 +254,7 @@ while true; do
   elif [ $max_session_num -eq 1 ]; then
     echo -e -n "Your pick: ${DIM}Hit Return to select latest${RESET}\n> "
   else
-    echo -n "> "
+    echo -e -n "Your pick: ${DIM}Hit Return to start a new session${RESET}\n> "
   fi
   read -n 1 -r session_num
 
