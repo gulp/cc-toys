@@ -78,6 +78,126 @@ if [ "${1:-}" = "--all" ] || [ "${1:-}" = "-a" ]; then
   fi
 fi
 
+# Check for --scaffold flag
+if [ "${1:-}" = "--scaffold" ]; then
+  # Find script directory to locate examples
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  EXAMPLES_DIR="$(cd "$SCRIPT_DIR/.." && pwd)/examples"
+
+  # Verify examples directory exists
+  if [ ! -d "$EXAMPLES_DIR" ]; then
+    echo "Error: Examples directory not found at $EXAMPLES_DIR"
+    echo "Make sure you've installed claude-start properly"
+    exit 1
+  fi
+
+  # Verify we're in a Claude Code project
+  PROJECT_ROOT="$PWD"
+  if [ ! -d "$PROJECT_ROOT/.claude" ]; then
+    # Check if onboarded in ~/.claude.json
+    if [ -f ~/.claude.json ]; then
+      is_onboarded=$(jq -r --arg path "$PROJECT_ROOT" '.projects[$path].hasCompletedProjectOnboarding // false' ~/.claude.json 2>/dev/null)
+      if [ "$is_onboarded" != "true" ]; then
+        echo "Error: Not in a Claude Code project"
+        echo ""
+        echo "Run 'cs -a' to select a project first"
+        echo "Or navigate to a project directory"
+        exit 1
+      fi
+    else
+      echo "Error: Not in a Claude Code project"
+      echo ""
+      echo "Run 'cs -a' to select a project first"
+      echo "Or navigate to a project directory"
+      exit 1
+    fi
+  fi
+
+  # Show scaffolding menu
+  echo -e "${BOLD}${CYAN}🏗️  Claude Start Scaffolding${RESET}"
+  echo ""
+  echo "Project: $PROJECT_ROOT"
+  echo ""
+  echo "What would you like to set up?"
+  echo ""
+  echo "1) MCP profiles (core, research, ui, full)"
+  echo "2) Demo agents (pong, explainer, therapist)"
+  echo "3) Both"
+  echo "0) Cancel"
+  echo ""
+  echo -n "Your choice: "
+  read -n 1 -r choice
+  echo ""
+  echo ""
+
+  if [ "$choice" = "0" ]; then
+    echo -e "${DIM}Cancelled${RESET}"
+    exit 0
+  fi
+
+  # Setup MCP profiles
+  if [ "$choice" = "1" ] || [ "$choice" = "3" ]; then
+    echo "Setting up MCP profiles..."
+
+    # Create directory
+    mkdir -p "$PROJECT_ROOT/.claude/mcp_profiles"
+    echo -e "${GREEN}✓${RESET} Created .claude/mcp_profiles/"
+
+    # Copy profiles
+    for profile in core research ui full; do
+      if [ -f "$EXAMPLES_DIR/mcp_profiles/${profile}.json" ]; then
+        cp "$EXAMPLES_DIR/mcp_profiles/${profile}.json" "$PROJECT_ROOT/.claude/mcp_profiles/"
+        echo -e "${GREEN}✓${RESET} Copied ${profile}.json"
+      fi
+    done
+    echo ""
+  fi
+
+  # Setup demo agents
+  if [ "$choice" = "2" ] || [ "$choice" = "3" ]; then
+    echo "Setting up demo agents..."
+
+    # Create directory
+    mkdir -p "$PROJECT_ROOT/.claude/agents.env"
+    echo -e "${GREEN}✓${RESET} Created .claude/agents.env/"
+
+    # Copy config
+    if [ -f "$EXAMPLES_DIR/agents_config.json" ]; then
+      cp "$EXAMPLES_DIR/agents_config.json" "$PROJECT_ROOT/.claude/agents.env/"
+      echo -e "${GREEN}✓${RESET} Copied agents_config.json"
+    fi
+
+    # Copy agent files
+    for agent in pong explainer therapist; do
+      if [ -f "$EXAMPLES_DIR/agents/${agent}.md" ]; then
+        cp "$EXAMPLES_DIR/agents/${agent}.md" "$PROJECT_ROOT/.claude/agents.env/"
+        echo -e "${GREEN}✓${RESET} Copied ${agent}.md"
+      fi
+    done
+    echo ""
+  fi
+
+  # Show next steps
+  if [ "$choice" = "1" ] || [ "$choice" = "2" ] || [ "$choice" = "3" ]; then
+    echo -e "${GREEN}✅ Done!${RESET}"
+    echo ""
+    echo "Next steps:"
+    if [ "$choice" = "1" ] || [ "$choice" = "3" ]; then
+      echo "  • Run 'cs' to see your MCP profiles"
+      echo "  • Edit profiles in .claude/mcp_profiles/*.json"
+    fi
+    if [ "$choice" = "2" ] || [ "$choice" = "3" ]; then
+      echo "  • Run 'agentenv demo' to activate demo agents"
+      echo "  • Test with: Task tool → pong agent"
+    fi
+  else
+    echo -e "${DIM}Invalid choice${RESET}"
+    exit 1
+  fi
+
+  exit 0
+fi
+
 # Get project root
 # If we're in re-exec mode from --all, use PWD; otherwise use PWD
 if [ "${CLAUDE_START_REEXEC:-0}" = "1" ]; then
@@ -436,8 +556,8 @@ if [ "$profile" = ".mcp.json" ] || [ "$profile" = "default" ]; then
   # Use project .mcp.json or default behavior (no flags needed)
   :
 elif [ "$profile" = "none" ]; then
-  # Use empty config
-  cmd="$cmd --mcp-config \"$PROJECT_ROOT/.claude/mcp_profiles/none.json\""
+  # Use empty config (pass JSON string directly)
+  cmd="$cmd --mcp-config '{\"mcpServers\":{}}'"
   cmd="$cmd --strict-mcp-config"
 else
   # Use selected profile
