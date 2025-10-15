@@ -190,14 +190,19 @@ if [ "${1:-}" = "--scaffold" ]; then
   if [ "$choice" = "1" ] || [ "$choice" = "2" ] || [ "$choice" = "3" ]; then
     echo -e "${GREEN}✅ Done!${RESET}"
     echo ""
-    echo "Next steps:"
+    echo "Try it now:"
+    echo ""
     if [ "$choice" = "1" ] || [ "$choice" = "3" ]; then
-      echo "  • Run 'ccup' to see your MCP profiles"
-      echo "  • Edit profiles in .claude/mcp_profiles/*.json"
+      echo "  ccup"
+      echo ""
+      echo "Profiles: .claude/mcp_profiles/"
     fi
     if [ "$choice" = "2" ] || [ "$choice" = "3" ]; then
-      echo "  • Run 'agentenv demo' to activate demo agents"
-      echo "  • Test with: Task tool → pong agent"
+      if [ "$choice" = "3" ]; then echo ""; fi
+      echo "  agentenv demo"
+      echo ""
+      echo "In Claude:"
+      echo "  > ping the pong agent"
     fi
   else
     echo -e "${DIM}Invalid choice${RESET}"
