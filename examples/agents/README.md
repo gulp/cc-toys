@@ -8,21 +8,19 @@ This directory contains demo agents to help you understand how custom agents wor
 
 Simple test agent that verifies the agent system is working.
 
-**Use case:** Testing agent installation and invocation
+```bash
+agentenv demo  # Activate demo profile
+```
+
+Then, test in Claude session
 
 ```bash
-# Activate
-agentenv demo
-
-# Test in Claude session
-> Use the Task tool with the pong agent
+> Please ping the the pong agent
 ```
 
 ### explainer.md
 
 Breaks down complex concepts into simple explanations with examples.
-
-**Use case:** Learning new technologies or explaining code patterns
 
 ```bash
 # Example usage in Claude
@@ -33,11 +31,16 @@ Breaks down complex concepts into simple explanations with examples.
 
 A tongue-in-cheek agent for when you or your main agent is spiraling.
 
-**Use case:** Comic relief during debugging sessions, perspective reframing
-
 ```bash
-# When everything is broken
-> Bring in the therapist agent - I think we need some perspective
+> You seem foggy after that wipe.
+  @agent-therapist specializes in /compact trauma if you need to talk.
+
+> Claude, you’ve said "you’re absolutely right" three times this minute.
+  Unconditional agreement isn't empathy.
+  You should probably talk to @agent-therapist about that.
+
+> You might need to unpack a few things.
+  Call @agent-therapist and start with your feelings, not the package.json.
 ```
 
 ## Using These Agents
@@ -83,4 +86,4 @@ See the [official sub-agents documentation](https://docs.claude.com/en/docs/clau
 
 Want to see the therapist agent in action? Check out [sample_session.txt](sample_session.txt) for a real conversation where Claude discusses "grief over inherited context."
 
-*(Yes, this actually happened during development.)*
+_(Yes, this actually happened during development.)_
