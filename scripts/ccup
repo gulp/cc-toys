@@ -123,7 +123,7 @@ if [ "${1:-}" = "--scaffold" ]; then
   fi
 
   # Show scaffolding menu
-  echo -e "${BOLD}${CYAN}🏗️  Claude Start Scaffolding${RESET}"
+  echo -e "${BOLD}${CYAN}🏗️  ccup scaffolding${RESET}"
   echo ""
   echo "Project: $PROJECT_ROOT"
   echo ""
@@ -171,15 +171,15 @@ if [ "${1:-}" = "--scaffold" ]; then
     echo -e "${GREEN}✓${RESET} Created .claude/agents.env/"
 
     # Copy config
-    if [ -f "$EXAMPLES_DIR/agents_config.json" ]; then
-      cp "$EXAMPLES_DIR/agents_config.json" "$PROJECT_ROOT/.claude/agents.env/"
+    if [ -f "$EXAMPLES_DIR/agents.env/agents_config.json" ]; then
+      cp "$EXAMPLES_DIR/agents.env/agents_config.json" "$PROJECT_ROOT/.claude/agents.env/"
       echo -e "${GREEN}✓${RESET} Copied agents_config.json"
     fi
 
     # Copy agent files
     for agent in pong explainer therapist; do
-      if [ -f "$EXAMPLES_DIR/agents/${agent}.md" ]; then
-        cp "$EXAMPLES_DIR/agents/${agent}.md" "$PROJECT_ROOT/.claude/agents.env/"
+      if [ -f "$EXAMPLES_DIR/agents.env/${agent}.md" ]; then
+        cp "$EXAMPLES_DIR/agents.env/${agent}.md" "$PROJECT_ROOT/.claude/agents.env/"
         echo -e "${GREEN}✓${RESET} Copied ${agent}.md"
       fi
     done
