@@ -1,9 +1,5 @@
 {
-  "default": [
-    "context-gathering",
-    "context-refinement",
-    "logging"
-  ],
+  "default": [],
   "profiles": {
     "demo": [
       "pong",
