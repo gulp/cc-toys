@@ -270,7 +270,7 @@ Comprehensive setup:
 
 ## Demo Agents
 
-### pong.md
+### [pong.md](examples/agents/pong.md)
 Simple test agent to verify the agent system works.
 
 ```bash
@@ -279,7 +279,7 @@ agentenv demo
 # Response: "🏓 Pong! Agent system is working!"
 ```
 
-### explainer.md
+### [explainer.md](examples/agents/explainer.md)
 Breaks down complex concepts into simple explanations.
 
 **Format:**
@@ -288,7 +288,7 @@ Breaks down complex concepts into simple explanations.
 3. Common misconception
 4. Next step
 
-### therapist.md
+### [therapist.md](examples/agents/therapist.md)
 A tongue-in-cheek agent for when debugging gets existential.
 
 **Crisis indicators:**
