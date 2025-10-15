@@ -147,34 +147,61 @@ read -r response
 if [[ -z "$response" ]] || [[ "$response" =~ ^[Yy]$ ]]; then
     mkdir -p "$EXAMPLES_DEST"
 
-    # Download examples directory structure
-    echo "Downloading examples..."
+    # Check if running from cloned repo with local examples
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    LOCAL_EXAMPLES="$SCRIPT_DIR/examples"
 
-    # Create directories
-    mkdir -p "$EXAMPLES_DEST/mcp_profiles"
-    mkdir -p "$EXAMPLES_DEST/agents.env"
+    if [ -d "$LOCAL_EXAMPLES" ]; then
+        # Copy from local repo
+        echo "Copying examples from local repo..."
 
-    # Download MCP profile examples
-    for profile in core full research ui; do
-        curl -fsSL "https://raw.githubusercontent.com/$REPO/$VERSION/examples/mcp_profiles/${profile}.json" \
-            -o "$EXAMPLES_DEST/mcp_profiles/${profile}.json" 2>/dev/null || true
-    done
+        # Create directories
+        mkdir -p "$EXAMPLES_DEST/mcp_profiles"
+        mkdir -p "$EXAMPLES_DEST/agents.env"
 
-    # Download agent examples
-    for agent in pong explainer therapist; do
-        curl -fsSL "https://raw.githubusercontent.com/$REPO/$VERSION/examples/agents/${agent}.md" \
-            -o "$EXAMPLES_DEST/agents.env/${agent}.md" 2>/dev/null || true
-    done
+        # Copy MCP profiles
+        if [ -d "$LOCAL_EXAMPLES/mcp_profiles" ]; then
+            cp "$LOCAL_EXAMPLES/mcp_profiles"/*.json "$EXAMPLES_DEST/mcp_profiles/" 2>/dev/null || true
+        fi
 
-    # Download agent config example
-    curl -fsSL "https://raw.githubusercontent.com/$REPO/$VERSION/examples/agents_config.json" \
-        -o "$EXAMPLES_DEST/agents.env/agents_config.json" 2>/dev/null || true
+        # Copy agent examples
+        if [ -d "$LOCAL_EXAMPLES/agents.env" ]; then
+            cp "$LOCAL_EXAMPLES/agents.env"/*.md "$EXAMPLES_DEST/agents.env/" 2>/dev/null || true
+            cp "$LOCAL_EXAMPLES/agents.env/agents_config.json" "$EXAMPLES_DEST/agents.env/" 2>/dev/null || true
+            cp "$LOCAL_EXAMPLES/agents.env/README.md" "$EXAMPLES_DEST/agents.env/" 2>/dev/null || true
+        fi
 
-    # Download agents README
-    curl -fsSL "https://raw.githubusercontent.com/$REPO/$VERSION/examples/agents/README.md" \
-        -o "$EXAMPLES_DEST/agents.env/README.md" 2>/dev/null || true
+        echo -e "${GREEN}✓${RESET} Examples copied to $EXAMPLES_DEST"
+    else
+        # Download from GitHub
+        echo "Downloading examples..."
 
-    echo -e "${GREEN}✓${RESET} Examples saved to $EXAMPLES_DEST"
+        # Create directories
+        mkdir -p "$EXAMPLES_DEST/mcp_profiles"
+        mkdir -p "$EXAMPLES_DEST/agents.env"
+
+        # Download MCP profile examples
+        for profile in core full research ui; do
+            curl -fsSL "https://raw.githubusercontent.com/$REPO/$VERSION/examples/mcp_profiles/${profile}.json" \
+                -o "$EXAMPLES_DEST/mcp_profiles/${profile}.json" 2>/dev/null || true
+        done
+
+        # Download agent examples
+        for agent in pong explainer therapist; do
+            curl -fsSL "https://raw.githubusercontent.com/$REPO/$VERSION/examples/agents/${agent}.md" \
+                -o "$EXAMPLES_DEST/agents.env/${agent}.md" 2>/dev/null || true
+        done
+
+        # Download agent config example
+        curl -fsSL "https://raw.githubusercontent.com/$REPO/$VERSION/examples/agents_config.json" \
+            -o "$EXAMPLES_DEST/agents.env/agents_config.json" 2>/dev/null || true
+
+        # Download agents README
+        curl -fsSL "https://raw.githubusercontent.com/$REPO/$VERSION/examples/agents/README.md" \
+            -o "$EXAMPLES_DEST/agents.env/README.md" 2>/dev/null || true
+
+        echo -e "${GREEN}✓${RESET} Examples saved to $EXAMPLES_DEST"
+    fi
     echo "  Copy to your projects:"
     echo "    cp -r $EXAMPLES_DEST/mcp_profiles your-project/.claude/"
     echo "    cp -r $EXAMPLES_DEST/agents.env/* your-project/.claude/agents.env/"
