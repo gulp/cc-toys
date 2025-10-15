@@ -420,20 +420,13 @@ rm ~/.local/bin/ccup ~/.local/bin/agentenv
 
 ---
 
-## Contributing
-
-Found a bug? Have an idea? [Open an issue](https://github.com/gulp/cc-toys/issues).
-
-Want to add a tool? Keep it:
-- Small (< 500 lines)
-- Focused (does one thing well)
-- Friendly (helpful errors, clear output)
-
----
-
 ## License
 
-MIT - See [LICENSE](LICENSE)
+WTFPL - Please do whatever you want with it.
+
+This is a personal project that works for me. Published in case it's useful to someone else.
+
+No support, no promises. Use at your own risk.
 
 ---
 
