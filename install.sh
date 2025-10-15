@@ -99,32 +99,43 @@ echo -e "${GREEN}✓${RESET} Installed ccup to $DEST/ccup"
 echo -e "${GREEN}✓${RESET} Installed agentenv to $DEST/agentenv"
 echo ""
 
-# Offer to create alias
-echo "Setting up aliases..."
-
-# Detect shell config file
-SHELL_CONFIG=""
-if [ -n "${BASH_VERSION:-}" ]; then
-    if [ -f "$HOME/.bashrc" ]; then
-        SHELL_CONFIG="$HOME/.bashrc"
-    elif [ -f "$HOME/.bash_profile" ]; then
-        SHELL_CONFIG="$HOME/.bash_profile"
-    fi
-elif [ -n "${ZSH_VERSION:-}" ]; then
-    SHELL_CONFIG="$HOME/.zshrc"
-fi
-
-echo -e "${DIM}Optional: Add an alias to your shell config${RESET}"
-echo "  echo \"alias ccup='ccup'\" >> ~/.bashrc"
-echo "  (ccup works fine without an alias)"
-
-echo ""
-
 # Check if DEST is in PATH
 if [[ ":$PATH:" != *":$DEST:"* ]]; then
-    echo -e "${YELLOW}⚠${RESET} $DEST is not in your PATH"
-    echo "  Add this to your shell config:"
-    echo "    export PATH=\"$DEST:\$PATH\""
+    echo -e "${YELLOW}⚠  WARNING: $DEST is not in your PATH${RESET}"
+    echo ""
+    echo "The installed commands won't work until you add it to PATH."
+    echo ""
+
+    # Detect shell config file
+    SHELL_CONFIG=""
+    if [ -n "${BASH_VERSION:-}" ]; then
+        if [ -f "$HOME/.bashrc" ]; then
+            SHELL_CONFIG="$HOME/.bashrc"
+        elif [ -f "$HOME/.bash_profile" ]; then
+            SHELL_CONFIG="$HOME/.bash_profile"
+        fi
+    elif [ -n "${ZSH_VERSION:-}" ]; then
+        SHELL_CONFIG="$HOME/.zshrc"
+    fi
+
+    if [ -n "$SHELL_CONFIG" ]; then
+        echo -n "Add $DEST to PATH in $SHELL_CONFIG? [Y/n] "
+        read -r path_response
+
+        if [[ -z "$path_response" ]] || [[ "$path_response" =~ ^[Yy]$ ]]; then
+            echo "" >> "$SHELL_CONFIG"
+            echo "# Added by cc-toys installer" >> "$SHELL_CONFIG"
+            echo "export PATH=\"$DEST:\$PATH\"" >> "$SHELL_CONFIG"
+            echo -e "${GREEN}✓${RESET} Added to $SHELL_CONFIG"
+            echo -e "${DIM}  Run: source $SHELL_CONFIG${RESET}"
+        else
+            echo -e "${DIM}Skipped. Add this manually:${RESET}"
+            echo "  export PATH=\"$DEST:\$PATH\""
+        fi
+    else
+        echo "Add this to your shell config:"
+        echo "  export PATH=\"$DEST:\$PATH\""
+    fi
     echo ""
 fi
 
@@ -185,4 +196,3 @@ echo ""
 echo "Documentation:"
 echo "  https://github.com/$REPO"
 echo ""
-echo -e "${DIM}Tip: Reload your shell or run 'source ~/.bashrc' to enable aliases${RESET}"

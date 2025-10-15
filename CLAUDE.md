@@ -346,3 +346,4 @@ cc-toys/
 ## Sessions System Behaviors
 
 @CLAUDE.sessions.md
+- never push to github without asking

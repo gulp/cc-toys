@@ -80,14 +80,23 @@ fi
 
 # Check for --scaffold flag
 if [ "${1:-}" = "--scaffold" ]; then
-  # Find script directory to locate examples
+  # Find examples directory (check installed location first, then repo)
+  INSTALLED_EXAMPLES="$HOME/.local/share/cc-toys/examples"
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  EXAMPLES_DIR="$(cd "$SCRIPT_DIR/.." && pwd)/examples"
+  REPO_EXAMPLES="$(cd "$SCRIPT_DIR/.." && pwd)/examples"
 
-  # Verify examples directory exists
-  if [ ! -d "$EXAMPLES_DIR" ]; then
-    echo "Error: Examples directory not found at $EXAMPLES_DIR"
-    echo "Make sure you've installed claude-start properly"
+  if [ -d "$INSTALLED_EXAMPLES" ]; then
+    EXAMPLES_DIR="$INSTALLED_EXAMPLES"
+  elif [ -d "$REPO_EXAMPLES" ]; then
+    EXAMPLES_DIR="$REPO_EXAMPLES"
+  else
+    echo "Error: Examples directory not found"
+    echo "Tried:"
+    echo "  - $INSTALLED_EXAMPLES (installed)"
+    echo "  - $REPO_EXAMPLES (repo)"
+    echo ""
+    echo "Run the installer to get examples:"
+    echo "  curl -fsSL https://raw.githubusercontent.com/gulp/cc-toys/main/install.sh | bash"
     exit 1
   fi
 
@@ -100,14 +109,14 @@ if [ "${1:-}" = "--scaffold" ]; then
       if [ "$is_onboarded" != "true" ]; then
         echo "Error: Not in a Claude Code project"
         echo ""
-        echo "Run 'cs -a' to select a project first"
+        echo "Run 'ccup -a' to select a project first"
         echo "Or navigate to a project directory"
         exit 1
       fi
     else
       echo "Error: Not in a Claude Code project"
       echo ""
-      echo "Run 'cs -a' to select a project first"
+      echo "Run 'ccup -a' to select a project first"
       echo "Or navigate to a project directory"
       exit 1
     fi
@@ -183,7 +192,7 @@ if [ "${1:-}" = "--scaffold" ]; then
     echo ""
     echo "Next steps:"
     if [ "$choice" = "1" ] || [ "$choice" = "3" ]; then
-      echo "  • Run 'cs' to see your MCP profiles"
+      echo "  • Run 'ccup' to see your MCP profiles"
       echo "  • Edit profiles in .claude/mcp_profiles/*.json"
     fi
     if [ "$choice" = "2" ] || [ "$choice" = "3" ]; then
@@ -210,7 +219,7 @@ else
     is_onboarded=$(jq -r --arg path "$PROJECT_ROOT" '.projects[$path].hasCompletedProjectOnboarding // false' ~/.claude.json)
     if [ "$is_onboarded" != "true" ]; then
       echo "Error: Not in an onboarded Claude project"
-      echo "Use 'cs -a' to select a project"
+      echo "Use 'ccup -a' to select a project"
       exit 1
     fi
   else
