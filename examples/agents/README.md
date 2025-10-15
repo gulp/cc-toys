@@ -76,3 +76,11 @@ This creates symlinks from `.claude/agents.env/` → `.claude/agents/` based on 
 ### Create Your Own
 
 See the [official sub-agents documentation](https://docs.claude.com/en/docs/claude-code/sub-agents) for how to create custom agents.
+
+---
+
+## Sample Sessions
+
+Want to see the therapist agent in action? Check out [sample_session.txt](sample_session.txt) for a real conversation where Claude discusses "grief over inherited context."
+
+*(Yes, this actually happened during development.)*

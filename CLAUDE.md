@@ -77,6 +77,7 @@ User → Project validation (if no -a)
    - **Profile mode**: `agentenv <profile>` - loads from agents_config.json, includes default agents
    - **Only mode**: `agentenv --only <agent>` - single agent, no defaults
    - **Clear mode**: `agentenv --clear` - remove all agent symlinks
+   - **Migrate mode**: `agentenv --migrate` - convert manual agents/ setup to managed agents.env/ structure
 
 3. **Profile Loading** (profile mode only)
    - Reads `agents_config.json` from agents.env/
@@ -94,6 +95,9 @@ User → Project validation (if no -a)
 - Default agents always included in profile mode (not in --only mode)
 - JSON config for easy editing (only needed for profile mode)
 - --only and --clear don't require agents_config.json
+- --migrate does complete migration in one step (Option C)
+- Migration preserves originals in agents.backup/ for safety
+- PWD-based path resolution (not script location) for project mode
 
 **Data Flow**:
 ```
@@ -115,6 +119,20 @@ User → agentenv [--global] --only <agent>
 User → agentenv [--global] --clear
      → Clear all symlinks in agents/
      → Report counts
+
+# Migrate mode
+User → agentenv [--global] --migrate
+     → Check if agents.env/ exists but config missing
+         → YES: Create config from existing agents.env/ files
+         → NO: Continue with full migration
+     → Check agents/ for real .md files (skip symlinks)
+         → NONE: Error, suggest ccup --scaffold
+     → Create agents.env/ directory
+     → Copy real .md files from agents/ to agents.env/
+     → Create agents_config.json with "core" profile
+     → Rename agents/ → agents.backup/
+     → Activate "core" profile (create symlinks)
+     → Report results with cleanup instructions
 ```
 
 ## File Structure
@@ -221,16 +239,27 @@ cc-toys/
    - Test `--clear` with no agents
    - Test `--global --clear`
 
-4. **Scope handling**:
+4. **Migrate mode**:
+   - Test with agents/ containing real files
+   - Test with empty agents/ directory (should error)
+   - Test with existing agents.env/ but no config (should create config)
+   - Test with agents/ containing symlinks (should skip them)
+   - Test `--global --migrate`
+   - Verify agents.backup/ created and contains originals
+   - Verify "core" profile activated after migration
+
+5. **Scope handling**:
    - Test project-local mode
    - Test --global mode
    - Test with missing config (profile mode should fail, --only/--clear should work)
 
-5. **Edge cases**:
+6. **Edge cases**:
    - Missing agents.env/ directory
    - Invalid JSON in config (profile mode only)
    - Profile name not in config
    - Agent name without .md extension
+   - Migration with existing agents.env/ and config (should not overwrite)
+   - Migration from PWD vs installed script path
 
 ## Common Tasks
 
@@ -286,11 +315,14 @@ cc-toys/
 ## Notes for Future Sessions
 
 - The `ccup` script uses PWD for project detection (not script location)
+- The `agentenv` script uses PWD for project-local paths (not script location)
 - Column widths are dynamically calculated from actual content
 - ANSI styling must be applied AFTER padding to maintain alignment
 - The `--global` flag in `agentenv` changes both source and target paths
 - Default agents are ALWAYS included in profile mode (not in --only mode)
 - `agentenv --only` and `--clear` work without agents_config.json
+- `agentenv --migrate` does complete one-step migration (Option C)
+- Migration preserves originals in agents.backup/ directory
 - ESC key support requires checking for `$'\e'` character
 - Session UUIDs are stored in separate array parallel to display array
 

@@ -1,5 +1,9 @@
 # cc-toys
 
+<p align="center">
+  <img src="assets/shape_sorter.png" alt="cc-toys" width="180">
+</p>
+
 Small, friendly CLI helpers for Claude Code.
 
 They're not a framework. They're not even a toolkit.
@@ -125,6 +129,10 @@ agentenv --global full  # Global: activate all agents
 agentenv --only pong         # Activate single agent
 agentenv --clear             # Remove all agents
 agentenv --global --only pong  # Global single agent
+
+# Migrate from manual setup
+agentenv --migrate           # Convert agents/ → agents.env/ structure
+agentenv --global --migrate  # Migrate global agents
 ```
 
 **What it does:**
@@ -142,6 +150,41 @@ agentenv --global --only pong  # Global single agent
 - `agentenv <profile>` - Switch to profile (includes default agents)
 - `agentenv --only <agent>` - Activate single agent (no defaults)
 - `agentenv --clear` - Remove all agents
+- `agentenv --migrate` - Migrate from manual setup to managed structure
+
+**Migration:**
+If you have existing agents in `.claude/agents/`, use `--migrate` to convert to the managed structure:
+
+```bash
+$ agentenv --migrate
+
+Agent Environment: migrate (project)
+
+✓ Created .claude/agents.env/
+✓ Copied 3 agents: code-review, context-gathering, logging
+✓ Created agents_config.json with "core" profile
+✓ Renamed .claude/agents/ → .claude/agents.backup/
+✓ Activated "core" profile (3 symlinks created)
+
+Migration complete!
+
+Profile "core" contains:
+  • code-review, context-gathering, logging
+
+Cleanup (after verifying):
+  rm -rf .claude/agents.backup/
+```
+
+**What migration does:**
+1. Creates `agents.env/` directory
+2. Copies real `.md` files from `agents/` (skips symlinks)
+3. Creates `agents_config.json` with "core" profile
+4. Renames `agents/` → `agents.backup/` (preserves originals)
+5. Activates "core" profile automatically (creates symlinks)
+
+**Edge cases:**
+- Empty `agents/` directory → Suggests using `ccup --scaffold`
+- Existing `agents.env/` without config → Creates config from existing files
 
 ---
 

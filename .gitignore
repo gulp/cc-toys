@@ -1,5 +1,6 @@
 # Local development and testing
-.claude/state/
+.claude/
+sessions/
 *.jsonl
 
 # OS files
@@ -43,3 +44,10 @@ test-output/
 # Environment files
 .env
 .env.local
+
+# MCP configs (may contain API keys)
+.mcp.json
+*.mcp.json
+
+# Agent backups from migration
+.claude/agents.backup/

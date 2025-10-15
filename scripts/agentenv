@@ -13,6 +13,7 @@ CYAN='\033[36m'
 GLOBAL=false
 ONLY_MODE=false
 CLEAR_MODE=false
+MIGRATE_MODE=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -29,6 +30,10 @@ while [[ $# -gt 0 ]]; do
       CLEAR_MODE=true
       shift
       ;;
+    --migrate)
+      MIGRATE_MODE=true
+      shift
+      ;;
     *)
       break  # Non-flag argument, stop parsing
       ;;
@@ -42,8 +47,7 @@ if [ "$GLOBAL" = true ]; then
   CONFIG_FILE="$AGENTS_ENV/agents_config.json"
   SCOPE="global"
 else
-  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+  PROJECT_ROOT="$PWD"
   AGENTS_ENV="$PROJECT_ROOT/.claude/agents.env"
   AGENTS_DIR="$PROJECT_ROOT/.claude/agents"
   CONFIG_FILE="$AGENTS_ENV/agents_config.json"
@@ -116,6 +120,125 @@ if [ "$ONLY_MODE" = true ]; then
   exit 0
 fi
 
+# Handle --migrate mode
+if [ "$MIGRATE_MODE" = true ]; then
+  echo -e "${BOLD}Agent Environment:${RESET} migrate ${DIM}($SCOPE)${RESET}\n"
+
+  # Check if agents.env/ exists but config is missing
+  if [ -d "$AGENTS_ENV" ] && [ ! -f "$CONFIG_FILE" ]; then
+    echo "Found existing agents.env/ without config"
+
+    # Scan for .md files in agents.env/
+    mapfile -t existing_agents < <(find "$AGENTS_ENV" -type f -name "*.md" -printf "%f\n" | sed 's/.md$//' | sort)
+
+    if [ ${#existing_agents[@]} -eq 0 ]; then
+      echo -e "${YELLOW}Error:${RESET} No agents found in $AGENTS_ENV"
+      echo ""
+      echo "Use 'ccup --scaffold' to get demo agents"
+      exit 1
+    fi
+
+    # Create config from existing agents
+    agents_json=$(printf ',"%s"' "${existing_agents[@]}")
+    agents_json="[${agents_json:1}]"  # Remove leading comma
+
+    cat > "$CONFIG_FILE" << EOF
+{
+  "default": [],
+  "profiles": {
+    "core": $agents_json
+  }
+}
+EOF
+
+    echo -e "${GREEN}✓${RESET} Created agents_config.json with \"core\" profile"
+    echo ""
+    echo "Profile \"core\" contains:"
+    printf "  • %s\n" "${existing_agents[@]}"
+    echo ""
+    echo "Next steps:"
+    echo "  agentenv core  # Activate agents"
+
+    exit 0
+  fi
+
+  # Check if agents/ directory exists
+  if [ ! -d "$AGENTS_DIR" ]; then
+    echo -e "${YELLOW}Error:${RESET} No agents directory found at $AGENTS_DIR"
+    echo ""
+    echo "Use 'ccup --scaffold' to get demo agents"
+    exit 1
+  fi
+
+  # Check for real .md files in agents/ (skip symlinks)
+  mapfile -t agent_files < <(find "$AGENTS_DIR" -type f -name "*.md" -printf "%f\n" | sort)
+
+  if [ ${#agent_files[@]} -eq 0 ]; then
+    echo -e "${YELLOW}Error:${RESET} No agents found in $AGENTS_DIR"
+    echo ""
+    echo "Use 'ccup --scaffold' to get demo agents"
+    exit 1
+  fi
+
+  # Create agents.env/ directory
+  mkdir -p "$AGENTS_ENV"
+  echo -e "${GREEN}✓${RESET} Created $AGENTS_ENV/"
+
+  # Copy real .md files to agents.env/
+  agent_names=()
+  for file in "${agent_files[@]}"; do
+    cp "$AGENTS_DIR/$file" "$AGENTS_ENV/$file"
+    agent_name="${file%.md}"
+    agent_names+=("$agent_name")
+  done
+
+  echo -e "${GREEN}✓${RESET} Copied ${#agent_files[@]} agents: ${agent_names[*]}"
+
+  # Create agents_config.json
+  agents_json=$(printf ',"%s"' "${agent_names[@]}")
+  agents_json="[${agents_json:1}]"  # Remove leading comma
+
+  cat > "$CONFIG_FILE" << EOF
+{
+  "default": [],
+  "profiles": {
+    "core": $agents_json
+  }
+}
+EOF
+
+  echo -e "${GREEN}✓${RESET} Created agents_config.json with \"core\" profile"
+
+  # Rename agents/ to agents.backup/
+  AGENTS_BACKUP="${AGENTS_DIR}.backup"
+  mv "$AGENTS_DIR" "$AGENTS_BACKUP"
+  echo -e "${GREEN}✓${RESET} Renamed $AGENTS_DIR/ → ${AGENTS_BACKUP}/"
+
+  # Create agents/ directory for symlinks
+  mkdir -p "$AGENTS_DIR"
+
+  # Activate "core" profile (create symlinks)
+  count=0
+  for agent in "${agent_names[@]}"; do
+    source="$AGENTS_ENV/${agent}.md"
+    target="$AGENTS_DIR/${agent}.md"
+    ln -s "$source" "$target"
+    count=$((count + 1))
+  done
+
+  echo -e "${GREEN}✓${RESET} Activated \"core\" profile ($count symlinks created)"
+  echo ""
+  echo -e "${GREEN}Migration complete!${RESET}"
+  echo ""
+  echo "Profile \"core\" contains:"
+  printf "  • %s\n" "${agent_names[@]}"
+  echo ""
+  echo "Cleanup (after verifying):"
+  echo "  rm -rf ${AGENTS_BACKUP}/"
+
+  exit 0
+fi
+
 # Check if config exists (only needed for profile mode)
 if [ ! -f "$CONFIG_FILE" ]; then
   echo -e "${YELLOW}Warning:${RESET} $CONFIG_FILE not found"
@@ -128,6 +251,7 @@ if [ $# -eq 0 ]; then
   echo "  agentenv [--global] <profile>       # Switch to profile"
   echo "  agentenv [--global] --only <agent>  # Activate single agent"
   echo "  agentenv [--global] --clear         # Remove all agents"
+  echo "  agentenv [--global] --migrate       # Migrate from agents/ to agents.env/"
   echo ""
   echo -e "${CYAN}Scope:${RESET} $SCOPE"
   echo ""
