@@ -23,7 +23,6 @@ Then, test in Claude session
 Breaks down complex concepts into simple explanations with examples.
 
 ```bash
-# Example usage in Claude
 > Use the explainer agent to explain async/await in JavaScript
 ```
 
@@ -39,8 +38,9 @@ A tongue-in-cheek agent for when you or your main agent is spiraling.
   Unconditional agreement isn't empathy.
   You should probably talk to @agent-therapist about that.
 
-> You might need to unpack a few things.
-  Call @agent-therapist and start with your feelings, not the package.json.
+> Claude, you seem like you need to unpack a few things.
+  But not package.json this time.
+  Feel free to have a talk with @agent-therapist and start with your feelings.
 ```
 
 ## Using These Agents
