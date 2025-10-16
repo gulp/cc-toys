@@ -156,6 +156,12 @@ See [examples/agents/README.md](examples/agents/README.md) for details.
   - Arch: `sudo pacman -S jq`
 - **Bash 4.0+**
 
+**Optional:**
+- **fzf** - Fuzzy finder for better project selection
+  - macOS: `brew install fzf`
+  - Ubuntu/Debian: `sudo apt install fzf`
+  - Arch: `sudo pacman -S fzf`
+
 ---
 
 ## Uninstall
