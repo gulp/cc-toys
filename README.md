@@ -8,7 +8,7 @@ Just a couple of shell toys that make Claude sessions a little easier to live wi
 
 Generated end-to-end with Claude Code. I just pressed Enter and pretended to supervise.
 
-Use at your own risk (and curiosity).
+⚠️ Use at your own risk (and curiosity).
 
 ---
 
@@ -157,6 +157,7 @@ See [examples/agents/README.md](examples/agents/README.md) for details.
 - **Bash 4.0+**
 
 **Optional:**
+
 - **fzf** - Fuzzy finder for better project selection
   - macOS: `brew install fzf`
   - Ubuntu/Debian: `sudo apt install fzf`
